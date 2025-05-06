@@ -10,7 +10,7 @@ namespace ProgressPlayMCP.API.Controllers;
 /// Controller for player summary
 /// </summary>
 [Authorize]
-public class PlayerSummaryController : BaseController
+public class PlayerSummaryController : PermissionFilteredController
 {
     private readonly IProgressPlayApiClient _apiClient;
     private readonly IDateValidator _dateValidator;
@@ -21,11 +21,14 @@ public class PlayerSummaryController : BaseController
     /// </summary>
     /// <param name="apiClient">API client</param>
     /// <param name="dateValidator">Date validator</param>
+    /// <param name="userService">User service for permission filtering</param>
     /// <param name="logger">Logger</param>
     public PlayerSummaryController(
         IProgressPlayApiClient apiClient,
         IDateValidator dateValidator,
+        IUserService userService,
         ILogger<PlayerSummaryController> logger)
+        : base(userService)
     {
         _apiClient = apiClient ?? throw new ArgumentNullException(nameof(apiClient));
         _dateValidator = dateValidator ?? throw new ArgumentNullException(nameof(dateValidator));
@@ -42,6 +45,7 @@ public class PlayerSummaryController : BaseController
     [ProducesResponseType(typeof(List<PlayerSummaryResponse>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<IActionResult> GetPlayerSummary(PlayerSummaryRequest request, CancellationToken cancellationToken)
     {
@@ -66,6 +70,39 @@ public class PlayerSummaryController : BaseController
 
         try
         {
+            // Apply WhiteLabel permission filtering
+            var allowedWhiteLabels = await FilterWhiteLabelIdsAsync(request.WhiteLabels);
+            
+            if (!allowedWhiteLabels.Any())
+            {
+                _logger.LogWarning("User doesn't have access to any of the requested WhiteLabels");
+                return Forbid("You don't have permission to access the requested WhiteLabels.");
+            }
+
+            // Update the request with only the allowed WhiteLabels
+            request.WhiteLabels = allowedWhiteLabels;
+
+            // Apply AffiliateID filtering if specified
+            if (!string.IsNullOrEmpty(request.AffiliateId))
+            {
+                // Check if user has access to this affiliate for any of the requested WhiteLabels
+                bool hasAffiliateAccess = false;
+                foreach (var whiteLabelId in request.WhiteLabels)
+                {
+                    if (await HasAffiliateAccessAsync(whiteLabelId, request.AffiliateId))
+                    {
+                        hasAffiliateAccess = true;
+                        break;
+                    }
+                }
+
+                if (!hasAffiliateAccess)
+                {
+                    _logger.LogWarning("User doesn't have access to the requested Affiliate ID {AffiliateId}", request.AffiliateId);
+                    return Forbid("You don't have permission to access the requested Affiliate ID.");
+                }
+            }
+
             var result = await _apiClient.GetPlayerSummaryAsync(request, cancellationToken);
             return Ok(result);
         }

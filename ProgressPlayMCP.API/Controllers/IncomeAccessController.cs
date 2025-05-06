@@ -10,7 +10,7 @@ namespace ProgressPlayMCP.API.Controllers;
 /// Controller for income access data
 /// </summary>
 [Authorize]
-public class IncomeAccessController : BaseController
+public class IncomeAccessController : PermissionFilteredController
 {
     private readonly IProgressPlayApiClient _apiClient;
     private readonly IDateValidator _dateValidator;
@@ -21,11 +21,14 @@ public class IncomeAccessController : BaseController
     /// </summary>
     /// <param name="apiClient">API client</param>
     /// <param name="dateValidator">Date validator</param>
+    /// <param name="userService">User service for permission filtering</param>
     /// <param name="logger">Logger</param>
     public IncomeAccessController(
         IProgressPlayApiClient apiClient,
         IDateValidator dateValidator,
+        IUserService userService,
         ILogger<IncomeAccessController> logger)
+        : base(userService)
     {
         _apiClient = apiClient ?? throw new ArgumentNullException(nameof(apiClient));
         _dateValidator = dateValidator ?? throw new ArgumentNullException(nameof(dateValidator));
@@ -42,6 +45,7 @@ public class IncomeAccessController : BaseController
     [ProducesResponseType(typeof(List<IncomeAccessResponse>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<IActionResult> GetIncomeAccess(IncomeAccessRequest request, CancellationToken cancellationToken)
     {
@@ -72,6 +76,21 @@ public class IncomeAccessController : BaseController
 
         try
         {
+            // Check if user has access to the requested WhiteLabel
+            if (!await HasWhiteLabelAccessAsync(request.WhitelabelId))
+            {
+                _logger.LogWarning("User doesn't have access to the requested WhiteLabel {WhitelabelId}", request.WhitelabelId);
+                return Forbid("You don't have permission to access the requested WhiteLabel.");
+            }
+
+            // Apply AffiliateID filtering if specified
+            if (!string.IsNullOrEmpty(request.AffiliateId) && !await HasAffiliateAccessAsync(request.WhitelabelId, request.AffiliateId))
+            {
+                _logger.LogWarning("User doesn't have access to the requested Affiliate ID {AffiliateId} for WhiteLabel {WhitelabelId}", 
+                    request.AffiliateId, request.WhitelabelId);
+                return Forbid("You don't have permission to access the requested Affiliate ID.");
+            }
+
             var result = await _apiClient.GetIncomeAccessAsync(request, cancellationToken);
             return Ok(result);
         }

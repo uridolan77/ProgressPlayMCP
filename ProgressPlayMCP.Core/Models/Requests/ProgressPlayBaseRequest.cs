@@ -12,4 +12,10 @@ public abstract class ProgressPlayBaseRequest
     /// </summary>
     [JsonPropertyName("WhiteLabels")]
     public List<int> WhiteLabels { get; set; } = new List<int>();
+    
+    /// <summary>
+    /// Affiliate ID for filtering results
+    /// </summary>
+    [JsonPropertyName("AffiliateId")]
+    public string? AffiliateId { get; set; }
 }

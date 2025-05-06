@@ -10,7 +10,7 @@ namespace ProgressPlayMCP.API.Controllers;
 /// Controller for transactions
 /// </summary>
 [Authorize]
-public class TransactionsController : BaseController
+public class TransactionsController : PermissionFilteredController
 {
     private readonly IProgressPlayApiClient _apiClient;
     private readonly IDateValidator _dateValidator;
@@ -21,11 +21,14 @@ public class TransactionsController : BaseController
     /// </summary>
     /// <param name="apiClient">API client</param>
     /// <param name="dateValidator">Date validator</param>
+    /// <param name="userService">User service for permission filtering</param>
     /// <param name="logger">Logger</param>
     public TransactionsController(
         IProgressPlayApiClient apiClient,
         IDateValidator dateValidator,
+        IUserService userService,
         ILogger<TransactionsController> logger)
+        : base(userService)
     {
         _apiClient = apiClient ?? throw new ArgumentNullException(nameof(apiClient));
         _dateValidator = dateValidator ?? throw new ArgumentNullException(nameof(dateValidator));
@@ -42,6 +45,7 @@ public class TransactionsController : BaseController
     [ProducesResponseType(typeof(List<TransactionResponse>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<IActionResult> GetTransactions(TransactionsRequest request, CancellationToken cancellationToken)
     {
@@ -66,6 +70,39 @@ public class TransactionsController : BaseController
 
         try
         {
+            // Apply WhiteLabel permission filtering
+            var allowedWhiteLabels = await FilterWhiteLabelIdsAsync(request.WhiteLabels);
+            
+            if (!allowedWhiteLabels.Any())
+            {
+                _logger.LogWarning("User doesn't have access to any of the requested WhiteLabels");
+                return Forbid("You don't have permission to access the requested WhiteLabels.");
+            }
+
+            // Update the request with only the allowed WhiteLabels
+            request.WhiteLabels = allowedWhiteLabels;
+
+            // Apply AffiliateID filtering if specified
+            if (!string.IsNullOrEmpty(request.AffiliateId))
+            {
+                // Check if user has access to this affiliate for any of the requested WhiteLabels
+                bool hasAffiliateAccess = false;
+                foreach (var whiteLabelId in request.WhiteLabels)
+                {
+                    if (await HasAffiliateAccessAsync(whiteLabelId, request.AffiliateId))
+                    {
+                        hasAffiliateAccess = true;
+                        break;
+                    }
+                }
+
+                if (!hasAffiliateAccess)
+                {
+                    _logger.LogWarning("User doesn't have access to the requested Affiliate ID {AffiliateId}", request.AffiliateId);
+                    return Forbid("You don't have permission to access the requested Affiliate ID.");
+                }
+            }
+
             var result = await _apiClient.GetTransactionsAsync(request, cancellationToken);
             return Ok(result);
         }

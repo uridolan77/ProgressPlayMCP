@@ -7,12 +7,13 @@ using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using ProgressPlayMCP.Core.Interfaces;
 using ProgressPlayMCP.Core.Models;
+using ProgressPlayMCP.Core.Models.Auth;
 using ProgressPlayMCP.Core.Models.Responses;
 
 namespace ProgressPlayMCP.Infrastructure.Services;
 
 /// <summary>
-/// Implementation of the token service
+/// Service for JWT token generation and validation
 /// </summary>
 public class TokenService : ITokenService
 {
@@ -30,6 +31,57 @@ public class TokenService : ITokenService
         _jwtSettings = jwtSettings.Value ?? throw new ArgumentNullException(nameof(jwtSettings));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _refreshTokens = new Dictionary<string, (string, IEnumerable<string>, DateTime)>();
+    }
+
+    /// <summary>
+    /// Generate JWT token for authenticated user
+    /// </summary>
+    /// <param name="user">Authenticated user</param>
+    /// <returns>JWT token</returns>
+    public string GenerateJwtToken(User user)
+    {
+        var tokenHandler = new JwtSecurityTokenHandler();
+        var key = Encoding.ASCII.GetBytes(_jwtSettings.Secret);
+        
+        var claims = new List<Claim>
+        {
+            new Claim(ClaimTypes.Name, user.Username),
+            new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
+        };
+        
+        // Add roles as claims
+        foreach (var role in user.Roles)
+        {
+            claims.Add(new Claim(ClaimTypes.Role, role));
+        }
+        
+        // Add allowed white labels as claims
+        foreach (var whiteLabelId in user.AllowedWhiteLabels)
+        {
+            claims.Add(new Claim("WhiteLabel", whiteLabelId.ToString()));
+        }
+        
+        // Add allowed affiliates as claims
+        foreach (var whiteLabelAffiliates in user.AllowedAffiliates)
+        {
+            int whiteLabelId = whiteLabelAffiliates.Key;
+            foreach (var affiliateId in whiteLabelAffiliates.Value)
+            {
+                claims.Add(new Claim($"Affiliate:{whiteLabelId}", affiliateId));
+            }
+        }
+
+        var tokenDescriptor = new SecurityTokenDescriptor
+        {
+            Subject = new ClaimsIdentity(claims),
+            Expires = DateTime.UtcNow.AddHours(_jwtSettings.ExpirationHours),
+            SigningCredentials = new SigningCredentials(new SymmetricSecurityKey(key), SecurityAlgorithms.HmacSha256Signature),
+            Issuer = _jwtSettings.Issuer,
+            Audience = _jwtSettings.Audience
+        };
+
+        var token = tokenHandler.CreateToken(tokenDescriptor);
+        return tokenHandler.WriteToken(token);
     }
 
     /// <summary>

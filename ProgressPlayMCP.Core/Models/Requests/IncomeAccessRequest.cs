@@ -5,7 +5,7 @@ namespace ProgressPlayMCP.Core.Models.Requests;
 /// <summary>
 /// Request model for IncomeAccess endpoint
 /// </summary>
-public class IncomeAccessRequest
+public class IncomeAccessRequest : ProgressPlayBaseRequest
 {
     /// <summary>
     /// Currency of the result data

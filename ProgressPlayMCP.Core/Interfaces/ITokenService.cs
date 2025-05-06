@@ -1,12 +1,20 @@
+using ProgressPlayMCP.Core.Models.Auth;
 using ProgressPlayMCP.Core.Models.Responses;
 
 namespace ProgressPlayMCP.Core.Interfaces;
 
 /// <summary>
-/// Service for JWT token generation and validation
+/// Interface for JWT token operations
 /// </summary>
 public interface ITokenService
 {
+    /// <summary>
+    /// Generate JWT token for authenticated user
+    /// </summary>
+    /// <param name="user">Authenticated user</param>
+    /// <returns>JWT token</returns>
+    string GenerateJwtToken(User user);
+
     /// <summary>
     /// Generate a token for a user
     /// </summary>
