@@ -23,9 +23,13 @@ public static class ServiceCollectionExtensions
         // Add settings
         services.Configure<ProgressPlayApiSettings>(configuration.GetSection("ProgressPlayApi"));
         services.Configure<JwtSettings>(configuration.GetSection("JwtSettings"));
+        services.Configure<ProgressPlayDbSettings>(configuration.GetSection("ProgressPlayDb"));
 
         // Add HTTP client
         services.AddHttpClient<IProgressPlayApiClient, ProgressPlayApiClient>();
+
+        // Add database client
+        services.AddScoped<IProgressPlayDbClient, ProgressPlayDbClient>();
 
         // Add services
         services.AddSingleton<IApiExceptionHandler, ApiExceptionHandler>();

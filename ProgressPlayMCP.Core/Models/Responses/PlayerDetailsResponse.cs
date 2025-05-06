@@ -8,13 +8,16 @@ namespace ProgressPlayMCP.Core.Models.Responses;
 public class PlayerDetailsResponse
 {
     [JsonPropertyName("PlayerID")]
-    public int? PlayerId { get; set; }
+    public long? PlayerId { get; set; }
 
     [JsonPropertyName("WhitelabelId")]
     public int? WhitelabelId { get; set; }
 
     [JsonPropertyName("Alias")]
     public string Alias { get; set; } = string.Empty;
+
+    [JsonPropertyName("Username")]
+    public string Username { get; set; } = string.Empty;
 
     [JsonPropertyName("CasinoName")]
     public string CasinoName { get; set; } = string.Empty;

@@ -17,7 +17,7 @@ public class DailyActionResponse
     public int? WhitelabelId { get; set; }
 
     [JsonPropertyName("Playerid")]
-    public int? PlayerId { get; set; }
+    public long? PlayerId { get; set; }
 
     [JsonPropertyName("Registration")]
     public int? Registration { get; set; }
@@ -27,6 +27,22 @@ public class DailyActionResponse
 
     [JsonPropertyName("Ftda")]
     public int? Ftda { get; set; }
+
+    // Missing properties used in ProgressPlayDbClient
+    [JsonPropertyName("CasinoName")]
+    public string CasinoName { get; set; } = string.Empty;
+
+    [JsonPropertyName("CasinoWhiteLabelId")]
+    public int? WhiteLabelId { get; set; }
+
+    [JsonPropertyName("TransactionDate")]
+    public DateTime? TransactionDate { get; set; }
+
+    [JsonPropertyName("Currency")]
+    public string Currency { get; set; } = string.Empty;
+
+    [JsonPropertyName("Country")]
+    public string Country { get; set; } = string.Empty;
 
     [JsonPropertyName("Deposits")]
     public decimal? Deposits { get; set; }

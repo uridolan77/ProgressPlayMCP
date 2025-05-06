@@ -10,8 +10,14 @@ public class TransactionResponse
     [JsonPropertyName("OriginalTransactionID")]
     public long? OriginalTransactionId { get; set; }
 
+    [JsonPropertyName("TransactionId")]
+    public long? TransactionId { get; set; }
+
     [JsonPropertyName("PlayerID")]
-    public int? PlayerId { get; set; }
+    public long? PlayerId { get; set; }
+
+    [JsonPropertyName("PlayerUsername")]
+    public string PlayerUsername { get; set; } = string.Empty;
 
     [JsonPropertyName("WhitelabelId")]
     public int? WhitelabelId { get; set; }
@@ -24,6 +30,12 @@ public class TransactionResponse
 
     [JsonPropertyName("TransactionType")]
     public string TransactionType { get; set; } = string.Empty;
+
+    [JsonPropertyName("Amount")]
+    public decimal? Amount { get; set; }
+
+    [JsonPropertyName("OriginalAmount")]
+    public decimal? OriginalAmount { get; set; }
 
     [JsonPropertyName("Currency")]
     public string Currency { get; set; } = string.Empty;

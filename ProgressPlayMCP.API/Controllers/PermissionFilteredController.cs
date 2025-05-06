@@ -39,35 +39,15 @@ public abstract class PermissionFilteredController : BaseController
         var userId = GetCurrentUserId();
         if (!userId.HasValue)
         {
-            Console.WriteLine("GetCurrentUserId returned null - no user ID found in claims");
             return new List<int>();
         }
 
-        // Even more detailed logging to understand role checking
-        var username = User.Identity?.Name;
-        var allClaims = string.Join(", ", User.Claims.Select(c => $"{c.Type}: {c.Value}"));
-        var roleClaims = string.Join(", ", User.Claims.Where(c => c.Type == ClaimTypes.Role || c.Type == "role").Select(c => $"{c.Type}: {c.Value}"));
-        
-        Console.WriteLine($"USER CLAIMS DEBUG - Username: {username}, UserID: {userId}");
-        Console.WriteLine($"ALL CLAIMS: {allClaims}");
-        Console.WriteLine($"ROLE CLAIMS: {roleClaims}");
-        Console.WriteLine($"Is Admin (ClaimTypes.Role): {User.Claims.Any(c => c.Type == ClaimTypes.Role && c.Value == "Admin")}");
-        Console.WriteLine($"Is Admin (role): {User.Claims.Any(c => c.Type == "role" && c.Value == "Admin")}");
-        Console.WriteLine($"User.IsInRole('Admin'): {User.IsInRole("Admin")}");
-        Console.WriteLine($"ClaimsPrincipal Identity Type: {User.Identity?.GetType().FullName}");
-        Console.WriteLine($"Authentication Type: {User.Identity?.AuthenticationType}");
-        
-        // Direct check for "role" claim with value "Admin" 
-        var isAdminViaDirectCheck = User.Claims.Any(c => c.Type == "role" && c.Value == "Admin");
-        
-        // Check if user is an admin (modified to handle both checks)
-        if (User.IsInRole("Admin") || isAdminViaDirectCheck)
+        // Check if user is an admin (admins can access everything)
+        if (User.IsInRole("Admin"))
         {
-            Console.WriteLine($"USER IS ADMIN (IsInRole: {User.IsInRole("Admin")}, DirectCheck: {isAdminViaDirectCheck}) - Returning all WhiteLabels");
             return await GetAllWhiteLabelsAsync();
         }
 
-        Console.WriteLine("USER IS NOT ADMIN - Returning filtered WhiteLabels");
         return await _userService.GetUserWhiteLabelsAsync(userId.Value);
     }
 

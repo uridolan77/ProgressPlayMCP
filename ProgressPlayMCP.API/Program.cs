@@ -1,5 +1,6 @@
 using System.Reflection;
 using System.Text;
+using System.Security.Claims;
 using Azure.Identity;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.Extensions.Options;
@@ -120,8 +121,9 @@ builder.Services.AddAuthentication(options =>
         ValidateLifetime = true,
         // Add a 5-minute clock skew to account for server time differences
         ClockSkew = TimeSpan.FromMinutes(5),
-        // Make sure role claims are properly mapped
-        RoleClaimType = "role"
+        // Set the proper ClaimType for role - this is critical!
+        RoleClaimType = ClaimTypes.Role,
+        NameClaimType = ClaimTypes.Name
     };
     
     // Configure JWT Bearer to work with SignalR
@@ -192,7 +194,7 @@ builder.Services.AddSwaggerGen(c =>
     {
         Title = "ProgressPlay MCP API",
         Version = "v1",
-        Description = "API for accessing ProgressPlay Reports data and MCP server functionality",
+        Description = "API for accessing ProgressPlay Reports data and MCP server functionality. The API now provides a consolidated API Gateway at `/api/gateway` for all data access endpoints.",
         Contact = new OpenApiContact
         {
             Name = "Your Company",
@@ -242,6 +244,7 @@ builder.Services.AddSwaggerGen(c =>
     c.OperationFilter<SwaggerDefaultValues>(); // Add default values filter for login
     c.OperationFilter<RequestExamplesOperationFilter>(); // Add comprehensive request examples
     c.OperationFilter<IterationOperationFilter>(); // Then add the iteration examples
+    c.OperationFilter<ApiGatewayDocumentationFilter>(); // Add API Gateway documentation
     
     // Enable Swagger annotations
     c.EnableAnnotations();

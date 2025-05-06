@@ -7,11 +7,17 @@ namespace ProgressPlayMCP.Core.Models.Responses;
 /// </summary>
 public class PlayerGameResponse
 {
+    [JsonPropertyName("Id")]
+    public long? Id { get; set; }
+
     [JsonPropertyName("GameDate")]
     public DateTime? GameDate { get; set; }
 
     [JsonPropertyName("PlayerID")]
-    public int? PlayerId { get; set; }
+    public long? PlayerId { get; set; }
+
+    [JsonPropertyName("PlayerUsername")]
+    public string PlayerUsername { get; set; } = string.Empty;
 
     [JsonPropertyName("WhitelabelId")]
     public int? WhitelabelId { get; set; }
@@ -57,6 +63,24 @@ public class PlayerGameResponse
     /// </summary>
     [JsonIgnore]
     public decimal WinsValue => Wins ?? 0m;
+
+    [JsonPropertyName("RealBetAmount")]
+    public decimal? RealBetAmount { get; set; }
+
+    [JsonPropertyName("RealWinAmount")]
+    public decimal? RealWinAmount { get; set; }
+
+    [JsonPropertyName("BonusBetAmount")]
+    public decimal? BonusBetAmount { get; set; }
+
+    [JsonPropertyName("BonusWinAmount")]
+    public decimal? BonusWinAmount { get; set; }
+
+    [JsonPropertyName("NetGamingRevenue")]
+    public decimal? NetGamingRevenue { get; set; }
+
+    [JsonPropertyName("NumberOfSessions")]
+    public int? NumberOfSessions { get; set; }
 
     [JsonPropertyName("Ggr")]
     public decimal? Ggr { get; set; }
