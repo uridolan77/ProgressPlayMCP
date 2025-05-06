@@ -2,6 +2,8 @@ using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Text;
+using Microsoft.Data.SqlClient;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
@@ -20,17 +22,21 @@ public class TokenService : ITokenService
     private readonly JwtSettings _jwtSettings;
     private readonly ILogger<TokenService> _logger;
     private readonly Dictionary<string, (string Username, IEnumerable<string> Roles, DateTime Expiration)> _refreshTokens;
+    private readonly string _connectionString;
 
     /// <summary>
     /// Constructor
     /// </summary>
     /// <param name="jwtSettings">JWT settings</param>
     /// <param name="logger">Logger</param>
-    public TokenService(IOptions<JwtSettings> jwtSettings, ILogger<TokenService> logger)
+    /// <param name="configuration">Configuration to get connection string</param>
+    public TokenService(IOptions<JwtSettings> jwtSettings, ILogger<TokenService> logger, IConfiguration configuration)
     {
         _jwtSettings = jwtSettings.Value ?? throw new ArgumentNullException(nameof(jwtSettings));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _refreshTokens = new Dictionary<string, (string, IEnumerable<string>, DateTime)>();
+        _connectionString = configuration.GetConnectionString("DefaultConnection") ?? 
+            throw new ArgumentNullException(nameof(configuration), "Connection string 'DefaultConnection' not found.");
     }
 
     /// <summary>
@@ -98,6 +104,30 @@ public class TokenService : ITokenService
     {
         _logger.LogInformation("Generating token for user {Username}", username);
 
+        // First, get the user ID by username to include in the token
+        int? userId = null;
+        try
+        {
+            // Try to look up the user ID by username using the injected connection string
+            using var conn = new Microsoft.Data.SqlClient.SqlConnection(_connectionString);
+            conn.Open();
+            
+            using var cmd = conn.CreateCommand();
+            cmd.CommandText = "SELECT UserId FROM Users WHERE Username = @Username";
+            cmd.Parameters.AddWithValue("@Username", username);
+            
+            var result = cmd.ExecuteScalar();
+            if (result != null && result != DBNull.Value)
+            {
+                userId = Convert.ToInt32(result);
+                _logger.LogInformation("Found user ID {UserId} for username {Username}", userId, username);
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting user ID for token generation");
+        }
+
         var tokenHandler = new JwtSecurityTokenHandler();
         var key = Encoding.ASCII.GetBytes(_jwtSettings.Secret);
         
@@ -107,10 +137,18 @@ public class TokenService : ITokenService
             new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
         };
 
+        // Add UserId claim if available
+        if (userId.HasValue)
+        {
+            claims.Add(new Claim(ClaimTypes.NameIdentifier, userId.Value.ToString()));
+        }
+
         // Add roles to claims
         foreach (var role in roles)
         {
             claims.Add(new Claim(ClaimTypes.Role, role));
+            // Also add simple "role" claim to ensure compatibility
+            claims.Add(new Claim("role", role));
         }
 
         var tokenExpirationTime = DateTime.UtcNow.AddMinutes(_jwtSettings.AccessTokenExpirationMinutes);

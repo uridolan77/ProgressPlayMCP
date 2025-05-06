@@ -2,6 +2,7 @@ using System.Reflection;
 using System.Text;
 using Azure.Identity;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using ProgressPlayMCP.API.Hubs;
@@ -68,7 +69,12 @@ builder.Services.AddInfrastructureServices(builder.Configuration);
 
 // Register user management services
 builder.Services.AddScoped<IUserService, UserService>();
-builder.Services.AddScoped<ITokenService, TokenService>();
+// Update TokenService registration to pass IConfiguration
+builder.Services.AddScoped<ITokenService>(provider => 
+    new TokenService(
+        provider.GetRequiredService<IOptions<JwtSettings>>(), 
+        provider.GetRequiredService<ILogger<TokenService>>(),
+        provider.GetRequiredService<IConfiguration>()));
 builder.Services.Configure<JwtSettings>(builder.Configuration.GetSection("JwtSettings"));
 
 // Add CORS
