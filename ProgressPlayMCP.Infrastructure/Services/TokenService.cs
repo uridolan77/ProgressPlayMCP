@@ -46,6 +46,8 @@ public class TokenService : ITokenService
         var claims = new List<Claim>
         {
             new Claim(ClaimTypes.Name, user.Username),
+            // Add UserId as NameIdentifier claim - this is crucial for permissions
+            new Claim(ClaimTypes.NameIdentifier, user.UserId.ToString()),
             new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
         };
         
@@ -53,6 +55,8 @@ public class TokenService : ITokenService
         foreach (var role in user.Roles)
         {
             claims.Add(new Claim(ClaimTypes.Role, role));
+            // Also add simple "role" claim to ensure compatibility with different JWT consumers
+            claims.Add(new Claim("role", role));
         }
         
         // Add allowed white labels as claims

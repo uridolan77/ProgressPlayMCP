@@ -151,6 +151,25 @@ builder.Services.AddAuthentication(options =>
     };
 });
 
+// Configure authorization policies to recognize both standard and simple role claims
+builder.Services.AddAuthorization(options =>
+{
+    options.AddPolicy("Admin", policy => 
+        policy.RequireAssertion(context => 
+            context.User.IsInRole("Admin") || 
+            context.User.Claims.Any(c => c.Type == "role" && c.Value == "Admin")));
+    
+    options.AddPolicy("Manager", policy => 
+        policy.RequireAssertion(context => 
+            context.User.IsInRole("Manager") || 
+            context.User.Claims.Any(c => c.Type == "role" && c.Value == "Manager")));
+    
+    options.AddPolicy("User", policy => 
+        policy.RequireAssertion(context => 
+            context.User.IsInRole("User") || 
+            context.User.Claims.Any(c => c.Type == "role" && c.Value == "User")));
+});
+
 builder.Services.AddControllers()
     .AddJsonOptions(options =>
     {
